@@ -1,0 +1,119 @@
+﻿USE HowKteam
+GO
+
+ -- lay ra giao vien luong lon hon > 1800
+SELECT * FROM dbo.GIAOVIEN WHERE LUONG > 1800
+
+-- lay ra giao vien tuoi nho hon 40
+SELECT * FROM dbo.GIAOVIEN WHERE YEAR(GETDATE())-YEAR(NGSINH) < 40
+
+-- dem so luong nguoi than cua giao vien ma '001'
+SELECT COUNT(*) AS 'Nguoithan' FROM dbo.GIAOVIEN AS GV,dbo.NGUOITHAN AS NT
+WHERE GV.MAGV = NT.MAGV
+AND GV.MAGV = N'001'
+
+-- xuat ra thong tin giao vien ten ket thuc bang 'n'
+SELECT * FROM dbo.GIAOVIEN WHERE HOTEN LIKE '%n'
+
+-- kiem tra giao vien 001 co phai la GVCN hay k
+SELECT * FROM dbo.GIAOVIEN AS GV
+WHERE GV.MAGV = N'001'
+AND GV.MAGV IN ( -- tim ma giao vien co ton tai trong cot GVQLCM
+	SELECT GV.GVQLCM FROM dbo.GIAOVIEN
+)
+
+-- xuất ra danh sách giáo viên tham gia nhiều hơn 2 đề tài
+SELECT GV.MAGV, GV.HOTEN
+FROM dbo.GIAOVIEN AS GV
+WHERE 1 < (
+	SELECT COUNT(*) FROM dbo.THAMGIADT
+	WHERE GV.MAGV = MAGV
+)
+
+SELECT * FROM dbo.GIAOVIEN
+WHERE MAGV IN (
+	SELECT MAGV FROM dbo.THAMGIADT
+	GROUP BY MAGV HAVING COUNT(madt) >= 2
+)
+
+-- count(*) : đếm số hàng trong bảng
+-- xuất ra thông tinkhoa có nhiều hơn 2 giáo viên
+SELECT * FROM dbo.KHOA AS k
+WHERE 2 < (
+	SELECT COUNT(*) FROM dbo.BOMON AS BM,dbo.GIAOVIEN AS GV
+	WHERE BM.MAKHOA = K.MAKHOA 
+	AND GV.MABM = BM.MABM
+)
+-- cách 2
+SELECT *
+ FROM dbo.KHOA AS KH
+ WHERE 2<
+ (
+ SELECT COUNT(*) FROM 
+ (SELECT BM.MAKHOA FROM dbo.BOMON AS BM,dbo.GIAOVIEN AS GV WHERE BM.MABM=GV.MABM) AS GV_BM
+ WHERE KH.MAKHOA=GV_BM.MAKHOA
+ )
+
+-- tạo bảng mới
+SELECT MAGV, HOTEN,(YEAR(GETDATE()) - YEAR(NGSINH)) AS N'TUOI'  INTO  GV2 FROM dbo.GIAOVIEN
+SELECT TOP 4 * from  GV2
+WHERE TUOI > 1 ORDER BY TUOI DESC
+
+-- xuất ra giáo viên có nhiều hơn 2 người thân
+SELECT GV.MAGV, GV.HOTEN FROM dbo.GIAOVIEN AS GV
+WHERE 2 <=(
+	SELECT COUNT(*)FROM dbo.NGUOITHAN AS NT
+	WHERE GV.MAGV = NT.MAGV
+)
+
+-- xuất ra soố lượng tất cả người thân của từng giáo viên
+-- cột in ra phải nằm trong GROUP BY và trong 
+SELECT NGUOITHAN.MAGV, GIAOVIEN.HOTEN, COUNT(*) AS N'so luong NT' FROM dbo.NGUOITHAN, dbo.GIAOVIEN
+WHERE GIAOVIEN.MAGV = NGUOITHAN.MAGV
+GROUP BY NGUOITHAN.MAGV, HOTEN
+
+-- lấy ra danh sách giáo viên có số lương lớn hơn
+SELECT * FROM dbo.GIAOVIEN
+WHERE LUONG >= (
+	(SELECT sum(LUONG) FROM dbo.GIAOVIEN )/ (SELECT count (*) FROM dbo.GIAOVIEN)
+	)
+
+SELECT * FROM dbo.GIAOVIEN
+WHERE LUONG >= (
+	SELECT AVG(LUONG) FROM dbo.GIAOVIEN 
+	)
+
+-- lấy ra tên giáp viên và số lượng đề tài mà người đó tham gia
+SELECT DISTINCT GIAOVIEN.MAGV,MADT, COUNT(*) FROM dbo.GIAOVIEN , dbo.THAMGIADT
+WHERE GIAOVIEN.MAGV = THAMGIADT.MAGV
+GROUP BY GIAOVIEN.MAGV, MADT
+ORDER BY COUNT(*) DESC
+--xuất ra tên giáp viên và số lượng đề tài người đó đã hoàn thành
+SELECT GV.MAGV, GV.HOTEN, COUNT(*) FROM dbo.GIAOVIEN AS GV, dbo.THAMGIADT
+WHERE GV.MAGV = THAMGIADT.MAGV AND KETQUA = N'Đạt'
+GROUP BY GV.MAGV, GV.HOTEN
+
+SELECT * fROM dbo.KHOA, dbo.BOMON,dbo.GIAOVIEN
+WHERE BOMON.MABM = GIAOVIEN.MABM AND BOMON.MAKHOA = KHOA.MAKHOA
+
+
+
+--xuất ra tên khoa có tổng số lương giáo viên trong khoa là lớn nhất
+SELECT KHOA.MAKHOA,TENKHOA , SUM(LUONG) AS N'LUONG' fROM dbo.KHOA, dbo.BOMON,dbo.GIAOVIEN
+WHERE BOMON.MABM = GIAOVIEN.MABM AND BOMON.MAKHOA = KHOA.MAKHOA
+GROUP BY KHOA.MAKHOA, TENKHOA
+SELECT * FROM dbo.BANGLUONG
+WHERE LUONG = (SELECT MAX(LUONG) FROM dbo.BANGLUONG)
+
+-- kể tên và ngày sinh giáo viên sống ở mỹ tho và tên các đề tài gáo viên đó tham gia
+SELECT * FROM dbo.GIAOVIEN
+SELECT HOTEN, NGSINH,DIACHI, TENDT FROM dbo.GIAOVIEN,dbo.DETAI,dbo.THAMGIADT
+WHERE DETAI.MADT = THAMGIADT.MADT AND GIAOVIEN.MAGV = THAMGIADT.MAGV
+AND DIACHI like '%Biên Hòa%'
+
+SELECT * FROM dbo.DETAI
+SELECT TENDT, KINHPHI FROM dbo.DETAI
+WHERE KINHPHI >= ALL(SELECT KINHPHI FROM dbo.DETAI)
+
+UPDATE dbo.GIAOVIEN SET LUONG = LUONG * 1.1
+WHERE MAGV = '001'
